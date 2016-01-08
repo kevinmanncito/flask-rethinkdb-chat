@@ -20,20 +20,7 @@ app.config.update(dict(
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
 
-def watch_chats():
-    print 'Watching db for new chats!'
-    conn = r.connect(host='db', 
-                     port=28015, 
-                     db='chat')
-    feed = r.table("chats").changes().run(conn)
-    for chat in feed:
-        print 'emitting chat: ', type(chat), chat
-        socketio.emit('new_chat', jsonify(**chat))
 
-    if thread is None:
-        thread = Thread(target=watch_chats)
-        thread.setDaemon(True)
-        thread.start()
 
 
 def init_db():
@@ -78,6 +65,20 @@ def list_shows():
     chats = list(r.table("chats").order_by(index=r.desc('created')).run(g.db_conn))
     return render_template('chats.html', chats=chats)
 
+def watch_chats():
+    print 'Watching db for new chats!'
+    conn = r.connect(host=app.config['DB_HOST'], 
+                     port=app.config['DB_PORT'], 
+                     db=app.config['DB_NAME'])
+    feed = r.table("chats").changes().run(conn)
+    for chat in feed:
+        print 'emitting new chat: ', chat
+        chat['new_val']['created'] = str(chat['new_val']['created'])
+        socketio.emit('new_chat', chat)
+
+
 if __name__ == "__main__":
     # Set up rethinkdb changefeeds before starting server
+    thread = Thread(target=watch_chats)
+    thread.start()
     socketio.run(app, host='0.0.0.0', port=8000)
