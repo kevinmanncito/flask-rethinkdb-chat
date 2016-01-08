@@ -61,7 +61,7 @@ def create_chat():
 
 @app.route('/', methods=['GET']) 
 def list_shows():
-    chats = list(r.table("chats").order_by(index=r.desc('created')).run(g.db_conn))
+    chats = list(r.table("chats").order_by(index=r.desc('created')).limit(20).run(g.db_conn))
     return render_template('chats.html', chats=chats)
 
 def watch_chats():
