@@ -20,9 +20,6 @@ app.config.update(dict(
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 
 
-
-
-
 def init_db():
     conn = r.connect(app.config['DB_HOST'], app.config['DB_PORT'])
     try:
@@ -72,7 +69,6 @@ def watch_chats():
                      db=app.config['DB_NAME'])
     feed = r.table("chats").changes().run(conn)
     for chat in feed:
-        print 'emitting new chat: ', chat
         chat['new_val']['created'] = str(chat['new_val']['created'])
         socketio.emit('new_chat', chat)
 
