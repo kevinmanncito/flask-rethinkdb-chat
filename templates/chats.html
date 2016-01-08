@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+{% block title %}Create Show{% endblock %}
+
+{% block body %}
+
+<div class="row">
+  <form class="col s12" id="chat-form">
+    <div class="row">
+      <div class="input-field col s3">
+        <i class="material-icons prefix">account_circle</i>
+        <input id="name" class="materialize-input" placeholder="Name">
+      </div>
+      <div class="input-field col s6">
+        <i class="material-icons prefix">mode_edit</i>
+        <input id="message" class="materialize-input" placeholder="Message">
+      </div>
+      <div class="input-field col s3">
+        <button class="btn waves-effect waves-light" type="submit" name="action">Submit
+          <i class="material-icons right">send</i>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<ul id="chat-list" class="collection">
+    <li class="collection-header">&nbsp;</li>
+    {% for chat in chats %}
+    <li class="collection-item">{{ chat.content }}</li>
+    {% endfor %}
+</ul>
+<script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.8.1/axios.min.js"></script>
+<script>
+
+var chatForm = document.getElementById('chat-form');
+var nameInput = document.getElementById('name');
+var messageInput = document.getElementById('message');
+var chatList = document.getElementById('chat-list');
+
+var socket = io.connect('http://' + document.domain + ':' + location.port);
+socket.on('new_chat', function(data) {
+  chatList.innerHTML = '<li class="collection-item">'+data.new_val.name+' - '+data.new_val.message+'</li>' + chatList.innerHTML;
+});
+
+chatForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  var request = axios.post('/chats/', {
+    name: nameInput.value,
+    message: messageInput.value
+  });
+  request.then(function(data) {
+    console.log(data);
+  })
+  messageInput.value = "";
+});
+</script>
+
+
+
+
+{% endblock %}

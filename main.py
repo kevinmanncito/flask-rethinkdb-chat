@@ -1,0 +1,70 @@
+from flask import Flask, g, render_template, request, redirect, url_for
+from flask_socketio import SocketIO, send, emit
+from threading import Thread
+import rethinkdb as r
+from rethinkdb import RqlRuntimeError
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+# Load default config and override config from an environment variable
+app.config.update(dict(
+    DEBUG=True,
+    SECRET_KEY='secret!',
+    DB_HOST='db',
+    DB_PORT=28015,
+    DB_NAME='chat'
+))
+app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+
+def init_db():
+    conn = r.connect(app.config['DB_HOST'], app.config['DB_PORT'])
+    try:
+        r.db_create(app.config['DB_NAME']).run(conn)
+        r.db(app.config['DB_NAME']).table_create('chats').run(conn)
+        print 'Database setup completed. Now run the app without --setup.'
+    except RqlRuntimeError:
+        print 'App database already exists. Run the app without --setup.'
+    finally:
+        conn.close()
+
+@app.before_request
+def before_request():
+    try:
+        g.db_conn = r.connect(host=app.config['DB_HOST'], 
+                              port=app.config['DB_PORT'], 
+                              db=app.config['DB_NAME'])
+    except RqlDriverError:
+        abort(503, "No database connection could be established.")
+
+@app.teardown_request
+def teardown_request(exception):
+    try:
+        g.db_conn.close()
+    except AttributeError:
+        pass
+
+@app.route('/chats/', methods=['POST'])
+def create_chat():
+    
+    new_chat = r.table("chats").insert(request.data).run(g.db_conn)
+    return 'data'
+
+@app.route('/', methods=['GET'])
+def list_shows():
+    chats = list(r.table("chats").order_by(index='id').run(g.db_conn))
+    return render_template('chats.html', chats=chats)
+
+# def watch_changes():
+#     r.connect( "db", 28015).repl()
+#     feed = r.table("tv_shows").changes().run()
+#     for change in feed:
+#         print 'emitting change: ', change
+#         socketio.emit('change', change)
+
+if __name__ == "__main__":
+    # Set up rethinkdb changefeeds before starting server
+    # thread1 = Thread(target=watch_changes)
+    # thread1.setDaemon(True)
+    # thread1.start()
+    socketio.run(app, host='0.0.0.0', port=8000)
