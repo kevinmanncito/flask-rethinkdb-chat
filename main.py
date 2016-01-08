@@ -8,6 +8,8 @@ from datetime import datetime
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+global thread
+thread = None
 
 # Load default config and override config from an environment variable
 app.config.update(dict(
@@ -57,7 +59,7 @@ def create_chat():
         return make_response('success!', 201)
     return make_response('invalid chat', 401)
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET']) 
 def list_shows():
     chats = list(r.table("chats").order_by(index=r.desc('created')).run(g.db_conn))
     return render_template('chats.html', chats=chats)
@@ -75,6 +77,7 @@ def watch_chats():
 
 if __name__ == "__main__":
     # Set up rethinkdb changefeeds before starting server
-    thread = Thread(target=watch_chats)
-    thread.start()
+    if thread is None:
+        thread = Thread(target=watch_chats)
+        thread.start()
     socketio.run(app, host='0.0.0.0', port=8000)
